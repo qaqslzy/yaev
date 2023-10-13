@@ -31,18 +31,18 @@ func (q *noteQueue) ForEach(iter func(note interface{}) error) error {
 	notes := q.notes
 	q.notes = nil
 	q.mu.Unlock()
-	for _, note := range notes{
-		if err:= iter(note); err != nil{
+	for _, note := range notes {
+		if err := iter(note); err != nil {
 			return err
 		}
 	}
-	//q.mu.Lock()
-	//if q.notes == nil {
-	//	for i := range notes {
-	//		notes[i] = nil
-	//	}
-	//	q.notes = notes[:0]
-	//}
-	//q.mu.Unlock()
+	q.mu.Lock()
+	if q.notes == nil {
+		for i := range notes {
+			notes[i] = nil
+		}
+		q.notes = notes[:0]
+	}
+	q.mu.Unlock()
 	return nil
 }

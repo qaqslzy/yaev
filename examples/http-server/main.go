@@ -36,7 +36,7 @@ func main() {
 	var stdlib bool
 
 	flag.StringVar(&unixsocket, "unixsocket", "", "unix socket")
-	flag.IntVar(&port, "port", 8080, "server port")
+	flag.IntVar(&port, "port", 8250, "server port")
 	flag.BoolVar(&aaaa, "aaaa", false, "aaaaa....")
 	flag.BoolVar(&noparse, "noparse", true, "do not parse requests")
 	flag.BoolVar(&stdlib, "stdlib", false, "use stdlib")
@@ -116,12 +116,16 @@ func main() {
 		ssuf = "-net"
 	}
 	// We at least want the single http address.
-	addrs := []string{fmt.Sprintf("tcp"+ssuf+"://:%d", port)}
+	addrs := []string{fmt.Sprintf("tcp"+ssuf+"://0.0.0.0:%d", port)}
 	if unixsocket != "" {
 		addrs = append(addrs, fmt.Sprintf("unix"+ssuf+"://%s", unixsocket))
 	}
 	// Start serving!
-	server.Start(addrs...)
+	err := server.Start(addrs...)
+	if err != nil {
+		panic(err)
+	}
+
 }
 
 // appendhandle handles the incoming request and appends the response to

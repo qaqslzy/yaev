@@ -1,8 +1,10 @@
+//go:build darwin || netbsd || freebsd || openbsd || dragonfly
 // +build darwin netbsd freebsd openbsd dragonfly
 
 package poller
 
 import (
+	"fmt"
 	"log"
 	"syscall"
 	"yaev/event"
@@ -15,9 +17,9 @@ import (
  */
 
 type Poll struct {
-	fd int
+	fd     int
 	change []syscall.Kevent_t
-	notes noteQueue
+	notes  noteQueue
 }
 
 func (p *Poll) Fd() int {
@@ -52,7 +54,7 @@ func (p *Poll) Trigger(note interface{}) error {
 	_, err := syscall.Kevent(p.fd, []syscall.Kevent_t{{
 		Ident:  0,
 		Filter: syscall.EVFILT_USER,
-		Fflags:  syscall.NOTE_TRIGGER,
+		Fflags: syscall.NOTE_TRIGGER,
 	}}, nil, nil)
 	return err
 }
@@ -66,6 +68,7 @@ func (p *Poll) AddRead(fd int) {
 }
 
 func (p *Poll) AddReadWrite(fd int) {
+	fmt.Println("add rw")
 	p.change = append(p.change, syscall.Kevent_t{
 		Ident:  uint64(fd),
 		Filter: syscall.EVFILT_READ,
@@ -75,6 +78,7 @@ func (p *Poll) AddReadWrite(fd int) {
 		Filter: syscall.EVFILT_WRITE,
 		Flags:  syscall.EV_ADD,
 	})
+	fmt.Printf("before p.change: %p\n", &(p.change))
 }
 
 func (p *Poll) ModRead(fd int) {
@@ -107,23 +111,26 @@ func (p *Poll) ModDetach(fd int) {
 
 func (p *Poll) Wait(iter func(fd int, note interface{}) error) error {
 	events := make([]syscall.Kevent_t, 128)
-	for  {
+	for {
+		fmt.Printf("%d fd. wait p.change: %p, %v\n", p.fd, &(p.change), p.change)
 		n, err := syscall.Kevent(p.fd, p.change, events, nil)
-		if err!= nil && err != syscall.EINTR {
+		//fmt.Println("poll fd:", p.fd, ".events:", events[:n])
+
+		if err != nil && err != syscall.EINTR {
 			return err
 		}
 		p.change = p.change[:0]
-		if err:=p.notes.ForEach(func(note interface{}) error {
+		if err := p.notes.ForEach(func(note interface{}) error {
 			return iter(0, note)
 		}); err != nil {
 			return err
 		}
-		for i:= 0; i < n; i++ {
-			if fd := int(events[i].Ident); fd != 0{
+		for i := 0; i < n; i++ {
+			if fd := int(events[i].Ident); fd != 0 {
 				if err := iter(fd, nil); err != nil {
-					if  err == event.ErrKEvent{
+					if err == event.ErrKEvent {
 						log.Println(events[i])
-					}else {
+					} else {
 						return err
 
 					}

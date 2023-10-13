@@ -2,6 +2,7 @@ package eventloop
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"net"
 	"sync"
@@ -91,16 +92,17 @@ func (c *Connetcion) Close(events event.Events, err error) error {
 	return nil
 }
 
-func NewConnection(fd, i int, l *loop) error {
+func NewConnection(fd, i int, l *loop) (int, error) {
 	nfd, sa, err := syscall.Accept(fd)
+	fmt.Println("conn nfd:", nfd)
 	if err != nil {
 		if err == syscall.EAGAIN {
-			return nil
+			return -1, nil
 		}
-		return err
+		return -1, err
 	}
 	if err := syscall.SetNonblock(nfd, true); err != nil {
-		return err
+		return -1, err
 	}
 
 	c := connPool.Get().(*Connetcion)
@@ -111,10 +113,10 @@ func NewConnection(fd, i int, l *loop) error {
 	c.loop = l
 
 	l.fdconns[c.fd] = c
-	l.poll.AddReadWrite(c.fd)
+	//l.poll.AddReadWrite(c.fd)
 
 	atomic.AddInt32(&l.count, 1)
-	return nil
+	return c.fd, nil
 }
 
 func (c *Connetcion) Opened(events event.Events, lns []*listener.Listener) {

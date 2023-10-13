@@ -1,6 +1,7 @@
 package eventloop
 
 import (
+	"fmt"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -14,8 +15,6 @@ import (
 * @author Liu Weiyi
 * @date 2020/8/4 4:12 下午
  */
-
-
 
 type loop struct {
 	idx     int
@@ -36,7 +35,6 @@ func (l *loop) ModReadWrite(fd int) {
 func (l *loop) ModRead(fd int) {
 	l.poll.ModRead(fd)
 }
-
 
 func loopCloseConn(s *server, l *loop, c *Connetcion, err error) error {
 	atomic.AddInt32(&l.count, -1)
@@ -105,9 +103,12 @@ func loopTicker(s *server, l *loop) {
 
 func loopNote(s *server, l *loop, note interface{}) error {
 	var err error
+	fmt.Println("loopNote:", l.idx)
 	switch v := note.(type) {
 	case AddConnFd:
-		loopAccept(s, l, int(v))
+		fmt.Println("addconnfd:", int(v))
+		//loopAccept(s, l, int(v))
+		l.poll.AddReadWrite(int(v))
 	case time.Duration:
 		delay, action := s.events.Tick()
 		switch action {
@@ -132,34 +133,32 @@ func loopWake(s *server, c *Connetcion) error {
 	return nil
 }
 
-func (l *loop)accept(s *server, fd int) error {
-	return loopAccept(s, l, fd)
-}
+//func (l *loop) accept(s *server, fd int) error {
+//	return loopAccept(s, l, fd)
+//}
 
-func loopAccept(s *server, l *loop, fd int) error {
-	for i, ln := range s.lns {
-		if ln.Fd == fd {
-
-			//if err := s.LoadBalance(l); err == NotThatServer {
-			//	return nil
-			//}
-
-			if ln.Pconn != nil {
-				return loopUDPRead(s, l, i, fd)
-			}
-
-			if err := NewConnection(fd, i, l); err == nil {
-				break
-			} else {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-
+//func loopAccept(s *server, l *loop, fd int) error {
+//	for i, ln := range s.lns {
+//		if ln.Fd == fd {
+//
+//			//if err := s.LoadBalance(l); err == NotThatServer {
+//			//	return nil
+//			//}
+//
+//			if ln.Pconn != nil {
+//				return loopUDPRead(s, l, i, fd)
+//			}
+//
+//			if err := NewConnection(fd, i, l); err == nil {
+//				break
+//			} else {
+//				return err
+//			}
+//		}
+//	}
+//
+//	return nil
+//}
 
 func loopOpened(s *server, c *Connetcion) error {
 	c.Opened(s.events, s.lns)

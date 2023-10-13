@@ -31,8 +31,8 @@ type server struct {
 	tch        chan time.Duration
 	listenLoop *ListenLoop
 
-	loopsNum   int
-	nextLoop   int
+	loopsNum int
+	nextLoop int
 }
 
 func newServer(events event.Events, listeners []*listener.Listener) (s *server, numLoops int, err error) {
